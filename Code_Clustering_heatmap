@@ -1,0 +1,49 @@
+#import library
+library(pheatmap)
+library(dplyr)
+library(RColorBrewer)
+
+#import modified dataset
+data <- read.csv("~/Desktop/upload Files/ori_data.csv", stringsAsFactors=FALSE)
+age <- read.delim("~/Desktop/upload Files/age.txt")
+gender <- read.delim("~/Desktop/upload Files/gender.txt")
+region <- read.delim("~/Desktop/upload Files/region.txt")
+
+
+data[data=='NULL'] <- as.numeric(0)
+data[,8:36] <- as.data.frame(lapply(data[,8:36], as.numeric))
+
+data <- merge(data, age, by.age = "AGE_ID", by.data = "AGE_ID")
+data <- merge(data, region, by.region = "REGION_ID", by.data = "REGION_ID")
+data <- merge(data, gender, by.gender = "GENDER_ID", by.data = "GENDER_ID")
+
+any(is.na(data))
+
+#group by audience
+audience <- group_by(data, GENDER, AGE, REGION)
+aggre_user <-summarise_at(audience, vars(TIME0900:TIME2300), sum, na.rm = TRUE)
+aggre_user <- as.data.frame(aggre_user)
+any(is.na(aggre_user))
+
+# set audience annotation
+row_anno <- data.frame(gender = as.factor(aggre_user$GENDER), 
+                       age = as.factor(aggre_user$AGE),
+                       region = as.factor(aggre_user$REGION))
+rownames(aggre_user) <- rownames(row_anno)
+
+# assign color to age
+ageColor <- brewer.pal(7,"Spectral")
+names(ageColor) <- levels(aggre_user$AGE)
+
+regionColor <-brewer.pal(4, "Set1")
+names(regionColor) <- levels(aggre_user$REGION)
+
+ann_colors = list(
+  gender = c(Female = "pink", Male = "deepskyblue"),
+  age = ageColor,
+  region = regionColor)
+
+# generate audience heatmap
+pheatmap(aggre_user[,4:32], scale = "row", 
+         annotation_row = row_anno, show_rownames = F,
+         annotation_colors = ann_colors)
